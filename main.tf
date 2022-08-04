@@ -1,139 +1,105 @@
-terraform {
-  required_providers {
-    aws = {
-      source  = "hashicorp/aws"
-      version = "~> 4.16"
-    }
-  }
-
-  required_version = ">= 1.2.0"
+locals {
+  public_cidr  = ["10.0.0.0/26", "10.0.0.64/26"]
+  private_cidr = ["10.0.128/26", "10.0.0.192/26"]
 }
 
-provider "aws" {
-  region = "us-east-2"
-}
-
-resource "aws_vpc" "Main" {
+resource "aws_vpc" "main" {
   cidr_block       = "10.0.0.0/24"
   instance_tenancy = "default"
 
   tags = {
-    name = "Main"
+    Name = "main"
   }
 }
 
-resource "aws_internet_gateway" "IGW" {
-  vpc_id = aws_vpc.Main.id
-}
+resource "aws_subnet" "public" {
+  count = length(local.public_cidr)
 
-resource "aws_subnet" "public_A" {
-  vpc_id     = aws_vpc.Main.id
-  cidr_block = "10.0.0.0/26"
+  vpc_id                  = aws_vpc.main.id
+  cidr_block              = local.public_cidr[count.index]
   map_public_ip_on_launch = true
 
   tags = {
-    name = "public_A"
+    Name = "public${count.index}"
   }
 }
 
-resource "aws_subnet" "public_B" {
-  vpc_id     = aws_vpc.Main.id
-  cidr_block = "10.0.0.64/26"
-  map_public_ip_on_launch = true
+resource "aws_subnet" "private" {
+  count = length(local.private_cidr)
+
+  vpc_id     = aws_vpc.main.id
+  cidr_block = local.public_cidr[count.index]
 
   tags = {
-    name = "public_B"
+    Name = "private${count.index}"
   }
 }
 
-resource "aws_subnet" "private_C" {
-  vpc_id     = aws_vpc.Main.id
-  cidr_block = "10.0.0.128/26"
+resource "aws_internet_gateway" "main" {
+  vpc_id = aws_vpc.main.id
 
   tags = {
-    name = "private_C"
+    Name = "main"
   }
 }
 
-resource "aws_subnet" "private_D" {
-  vpc_id     = aws_vpc.Main.id
-  cidr_block = "10.0.0.192/26"
+resource "aws_eip" "nat" {
+  count = length(local.public_cidr)
+
+  vpc = true
 
   tags = {
-    name = "private_D"
+    Name = "nat${count.index}"
   }
 }
 
-resource "aws_route_table" "PublicRT" {
-  vpc_id = aws_vpc.Main.id
+resource "aws_nat_gateway" "nat" {
+  count = length(local.public_cidr)
+
+  allocation_id = aws_eip.nat[count.index].id
+  subnet_id     = aws_subnet.public[count.index].id
+
+  tags = {
+    Name = "main${count.index}"
+  }
+}
+
+resource "aws_route_table" "public" {
+  vpc_id = aws_vpc.main.id
   route {
     cidr_block = "0.0.0.0/0"
-    gateway_id = aws_internet_gateway.IGW.id
+    gateway_id = aws_internet_gateway.main.id
   }
 
   tags = {
-    name = "PublicRT"
+    Name = "public"
   }
 }
 
-resource "aws_route_table" "PrivateRT_C" {
-  vpc_id = aws_vpc.Main.id
+resource "aws_route_table" "private" {
+  count = length(local.private_cidr)
+
+  vpc_id = aws_vpc.main.id
   route {
     cidr_block     = "0.0.0.0/0"
-    nat_gateway_id = aws_nat_gateway.NATgw_1.id
+    nat_gateway_id = aws_nat_gateway.nat[count.index].id
   }
 
   tags = {
-    name = "PrivateRT_C"
+    Name = "private${count.index}"
   }
 }
 
-resource "aws_route_table" "PrivateRT_D" {
-  vpc_id = aws_vpc.Main.id
-  route {
-    cidr_block     = "0.0.0.0/0"
-    nat_gateway_id = aws_nat_gateway.NATgw_2.id
-  }
+resource "aws_route_table_association" "public" {
+  count = length(local.public_cidr)
 
-  tags = {
-    name = "PrivateRT_D"
-  }
+  subnet_id      = aws_subnet.public[count.index].id
+  route_table_id = aws_route_table.public.id
 }
 
-resource "aws_route_table_association" "PublicRTassociation_A" {
-  subnet_id      = aws_subnet.public_A.id
-  route_table_id = aws_route_table.PublicRT.id
-}
+resource "aws_route_table_association" "private" {
+  count = length(local.private_cidr)
 
-resource "aws_route_table_association" "PublicRTassociation_B" {
-  subnet_id      = aws_subnet.public_B.id
-  route_table_id = aws_route_table.PublicRT.id
-}
-
-resource "aws_route_table_association" "PrivateRTassociation_C" {
-  subnet_id      = aws_subnet.private_C.id
-  route_table_id = aws_route_table.PrivateRT_C.id
-}
-
-resource "aws_route_table_association" "PrivateRTassociation_D" {
-  subnet_id      = aws_subnet.private_D.id
-  route_table_id = aws_route_table.PrivateRT_D.id
-}
-
-resource "aws_eip" "nateIP_1" {
-  vpc = true
-}
-
-resource "aws_nat_gateway" "NATgw_1" {
-  allocation_id = aws_eip.nateIP_1.id
-  subnet_id     = aws_subnet.public_A.id
-}
-
-resource "aws_eip" "nateIP_2" {
-  vpc = true
-}
-
-resource "aws_nat_gateway" "NATgw_2" {
-  allocation_id = aws_eip.nateIP_2.id
-  subnet_id     = aws_subnet.public_B.id
+  subnet_id      = aws_subnet.private[count.index].id
+  route_table_id = aws_route_table.private[count.index].id
 }
