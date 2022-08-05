@@ -1,6 +1,6 @@
 locals {
   public_cidr  = ["10.0.0.0/26", "10.0.0.64/26"]
-  private_cidr = ["10.0.128/26", "10.0.0.192/26"]
+  private_cidr = ["10.0.0.128/26", "10.0.0.192/26"]
 }
 
 resource "aws_vpc" "main" {
@@ -28,7 +28,7 @@ resource "aws_subnet" "private" {
   count = length(local.private_cidr)
 
   vpc_id     = aws_vpc.main.id
-  cidr_block = local.public_cidr[count.index]
+  cidr_block = local.private_cidr[count.index]
 
   tags = {
     Name = "private${count.index}"
