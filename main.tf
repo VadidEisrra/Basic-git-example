@@ -11,7 +11,7 @@ resource "aws_subnet" "public" {
   count = length(var.public_cidr)
 
   vpc_id                  = aws_vpc.main.id
-  cidr_block              = var.private_cidr[count.index]
+  cidr_block              = var.public_cidr[count.index]
   map_public_ip_on_launch = true
 
   tags = {
@@ -34,7 +34,7 @@ resource "aws_internet_gateway" "main" {
   vpc_id = aws_vpc.main.id
 
   tags = {
-    Name = "${var.env_code}-main"
+    Name = "${var.env_code}-igw"
   }
 }
 
@@ -55,7 +55,7 @@ resource "aws_nat_gateway" "nat" {
   subnet_id     = aws_subnet.public[count.index].id
 
   tags = {
-    Name = "${var.env_code}-main${count.index}"
+    Name = "${var.env_code}-ngw${count.index}"
   }
 }
 
