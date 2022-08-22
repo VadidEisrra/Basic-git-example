@@ -1,5 +1,20 @@
+data "aws_ami" "amazon-linux-2" {
+  most_recent = true
+  owners      = ["amazon"]
+
+  filter {
+    name   = "architecture"
+    values = ["x86_64"]
+  }
+
+  filter {
+    name   = "virtualization-type"
+    values = ["hvm"]
+  }
+}
+
 resource "aws_instance" "web_server" {
-  ami                         = "ami-051dfed8f67f095f5"
+  ami                         = data.aws_ami.amazon-linux-2.id
   associate_public_ip_address = true
   instance_type               = "t3.micro"
   subnet_id                   = aws_subnet.public[0].id
@@ -13,16 +28,16 @@ resource "aws_security_group" "allow_ssh" {
   vpc_id      = aws_vpc.main.id
 
   ingress {
-    from_port        = 22
-    to_port          = 22
-    protocol         = "tcp"
-    cidr_blocks      = ["66.30.140.145/32"]
+    from_port   = 22
+    to_port     = 22
+    protocol    = "tcp"
+    cidr_blocks = ["66.30.140.145/32"]
   }
 
   egress {
-    from_port        = 0
-    to_port          = 0
-    protocol         = "-1"
-    cidr_blocks      = ["0.0.0.0/0"]
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
   }
 }
