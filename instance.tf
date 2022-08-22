@@ -3,7 +3,7 @@ resource "aws_instance" "web_server" {
   associate_public_ip_address = true
   instance_type               = "t3.micro"
   subnet_id                   = aws_subnet.public[0].id
-  key_name                    = "ec2key"
+  key_name                    = "main"
   vpc_security_group_ids      = [aws_security_group.allow_ssh.id]
 }
 
@@ -16,8 +16,7 @@ resource "aws_security_group" "allow_ssh" {
     from_port        = 22
     to_port          = 22
     protocol         = "tcp"
-    cidr_blocks      = ["0.0.0.0/0"]
-    ipv6_cidr_blocks = ["::/0"]
+    cidr_blocks      = ["66.30.140.145/32"]
   }
 
   egress {
@@ -25,6 +24,5 @@ resource "aws_security_group" "allow_ssh" {
     to_port          = 0
     protocol         = "-1"
     cidr_blocks      = ["0.0.0.0/0"]
-    ipv6_cidr_blocks = ["::/0"]
   }
 }
