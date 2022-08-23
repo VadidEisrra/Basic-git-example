@@ -19,7 +19,12 @@ resource "aws_instance" "web_server" {
   instance_type               = "t3.micro"
   subnet_id                   = aws_subnet.public[0].id
   key_name                    = "main"
-  vpc_security_group_ids      = [aws_security_group.allow_ssh.id]
+  vpc_security_group_ids      = [aws_security_group.allow_ssh.id, aws_security_group.allow_web.id]
+
+  user_data = file("user-data-apache.sh")
+  tags = {
+    Name = "${var.env_code}-web-server"
+  }
 }
 
 resource "aws_security_group" "allow_ssh" {
@@ -30,6 +35,26 @@ resource "aws_security_group" "allow_ssh" {
   ingress {
     from_port   = 22
     to_port     = 22
+    protocol    = "tcp"
+    cidr_blocks = ["66.30.140.145/32"]
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+}
+
+resource "aws_security_group" "allow_web" {
+  name        = "allow_web"
+  description = "Allow HTTP inbound traffic"
+  vpc_id      = aws_vpc.main.id
+
+  ingress {
+    from_port   = 80
+    to_port     = 80
     protocol    = "tcp"
     cidr_blocks = ["66.30.140.145/32"]
   }
