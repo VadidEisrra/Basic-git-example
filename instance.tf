@@ -1,6 +1,10 @@
 data "aws_ami" "amazon-linux-2" {
   most_recent = true
-  owners      = ["amazon"]
+
+  filter {
+    name   = "name"
+    values = ["amzn2-ami-kernel-*"]
+  }
 
   filter {
     name   = "architecture"
@@ -16,7 +20,7 @@ data "aws_ami" "amazon-linux-2" {
 resource "aws_instance" "web_server" {
   ami                         = data.aws_ami.amazon-linux-2.id
   associate_public_ip_address = true
-  instance_type               = "t3.micro"
+  instance_type               = "t2.micro"
   subnet_id                   = aws_subnet.public[0].id
   key_name                    = "main"
   vpc_security_group_ids      = [aws_security_group.allow_web_ssh.id]
